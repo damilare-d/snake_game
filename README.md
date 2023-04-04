@@ -1,6 +1,8 @@
 # snake_game
 
-A new Flutter project.
+A simple rpg game of snake, still in development stage.
+
+![snake_game](https://user-images.githubusercontent.com/83401880/229728296-6f6919a5-9dc0-4e5f-9c50-c775be46ebd2.png)
 
 ## Getting Started
 
