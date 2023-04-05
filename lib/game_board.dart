@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -7,7 +9,7 @@ class GameBoard extends StatefulWidget {
   final int rows;
   final int columns;
 
-  GameBoard({required this.rows, required this.columns, Key? key})
+  const GameBoard({required this.rows, required this.columns, Key? key})
       : super(key: key);
 
   @override
@@ -23,9 +25,17 @@ class _GameBoardState extends State<GameBoard> {
   Position food = Position(column: 5, row: 5);
   Position obstacle = Position(column: 6, row: 6);
 
+  Position foodPosition = Position(column: 5, row: 5);
+  List<Position> obstaclePositions = [
+    Position(column: 5, row: 5),
+    Position(column: 5, row: 5)
+  ];
+  Direction _snakeDirection = Direction.right;
+
   @override
   void initState() {
     super.initState();
+    timer();
     generateFood();
     generateObstacle();
   }
@@ -45,39 +55,110 @@ class _GameBoardState extends State<GameBoard> {
     obstacle = Position(column: obstaclecolumn, row: obstaclerow);
   }
 
+  void timer() {
+    const duration = Duration(milliseconds: 200);
+    Timer.periodic(duration, (Timer timer) {
+      move(_snakeDirection);
+    });
+  }
+
+  void resetGame() {
+    setState(() {
+      snake = [
+        Position(column: 0, row: 0),
+        Position(column: 0, row: 1),
+        Position(column: 0, row: 2),
+      ];
+      generateFood();
+      obstaclePositions = [];
+    });
+  }
+
+  void move(Direction direction) {
+    final newHead = snake.last.move(direction);
+
+    // Check for collision with food
+    if (newHead.row == foodPosition.row &&
+        newHead.column == foodPosition.column) {
+      generateFood();
+      setState(() {
+        snake.add(newHead);
+      });
+      return;
+    }
+
+    // Check for collision with obstacles
+    final collidedWithObstacle = obstaclePositions.any(
+      (pos) => pos.row == newHead.row && pos.column == newHead.column,
+    );
+    if (collidedWithObstacle) {
+      resetGame();
+      return;
+    }
+
+    setState(() {
+      snake.removeAt(0);
+      snake.add(newHead);
+    });
+  }
+
+  void onKeyEvent(RawKeyEvent event) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (_snakeDirection != Direction.left) {
+        _snakeDirection = Direction.right;
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (_snakeDirection != Direction.right) {
+        _snakeDirection = Direction.left;
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (_snakeDirection != Direction.down) {
+        _snakeDirection = Direction.up;
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (_snakeDirection != Direction.up) {
+        _snakeDirection = Direction.down;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      itemCount: widget.rows * widget.columns,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: widget.columns,
+    return RawKeyboardListener(
+      focusNode: FocusNode(),
+      onKey: (event) => onKeyEvent(event),
+      child: GridView.builder(
+        itemCount: widget.rows * widget.columns,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: widget.columns,
+        ),
+        itemBuilder: (BuildContext context, int index) {
+          // to check if the current index is part of the snake's body
+          bool isSnake = snake
+              .any((pos) => pos.row * widget.columns + pos.column == index);
+
+          // to check if the current index is the food
+          bool isFood = food.row * widget.columns + food.column == index;
+
+          // to check if the current index is the food
+          bool isObstacle =
+              obstacle.row * widget.columns + obstacle.column == index;
+
+          // to return a Snake widget or an empty Container
+          if (isSnake) {
+            return Snake(snake: snake);
+          } else if (isFood) {
+            return const Food();
+          } else if (isObstacle) {
+            return const Obstacle();
+          } else {
+            return Container(
+              color: Colors.grey[300],
+              margin: const EdgeInsets.all(2),
+            );
+          }
+        },
       ),
-      itemBuilder: (BuildContext context, int index) {
-        // to check if the current index is part of the snake's body
-        bool isSnake =
-            snake.any((pos) => pos.row * widget.columns + pos.column == index);
-
-        // to check if the current index is the food
-        bool isFood = food.row * widget.columns + food!.column == index;
-
-        // to check if the current index is the food
-        bool isObstacle =
-            obstacle!.row * widget.columns + obstacle!.column == index;
-
-        // to return a Snake widget or an empty Container
-        if (isSnake) {
-          return Snake(snake: snake);
-        } else if (isFood) {
-          return const Food();
-        } else if (isObstacle) {
-          return const Obstacle();
-        } else {
-          return Container(
-            color: Colors.grey[300],
-            margin: const EdgeInsets.all(2),
-          );
-        }
-      },
     );
   }
 }
@@ -119,9 +200,39 @@ class Obstacle extends StatelessWidget {
 class Position {
   int row;
   int column;
+  Direction? _direction;
 
   Position({
     required this.column,
     required this.row,
-  });
+    Direction? direction,
+  }) : _direction = direction;
+
+  Position move(Direction direction) {
+    final dx = direction == Direction.right
+        ? 1
+        : direction == Direction.left
+            ? -1
+            : 0;
+    final dy = direction == Direction.down
+        ? 1
+        : direction == Direction.up
+            ? -1
+            : 0;
+    final newColumn = column + dx;
+    final newRow = row + dy;
+    return Position(column: newColumn, row: newRow);
+  }
+}
+
+class Direction {
+  final int rowDelta;
+  final int columnDelta;
+
+  const Direction({required this.rowDelta, required this.columnDelta});
+
+  static const left = Direction(rowDelta: 0, columnDelta: -1);
+  static const up = Direction(rowDelta: -1, columnDelta: 0);
+  static const right = Direction(rowDelta: 0, columnDelta: 1);
+  static const down = Direction(rowDelta: 1, columnDelta: 0);
 }
