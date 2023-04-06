@@ -2,7 +2,6 @@ import 'dart:math';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 
 class GameBoard extends StatefulWidget {
@@ -31,6 +30,7 @@ class _GameBoardState extends State<GameBoard> {
     Position(column: 5, row: 5)
   ];
   Direction _snakeDirection = Direction.right;
+  int score = 0;
 
   @override
   void initState() {
@@ -53,6 +53,7 @@ class _GameBoardState extends State<GameBoard> {
     int obstaclecolumn = Random().nextInt(widget.columns);
 
     obstacle = Position(column: obstaclecolumn, row: obstaclerow);
+    obstaclePositions.add(obstacle);
   }
 
   void timer() {
@@ -70,23 +71,23 @@ class _GameBoardState extends State<GameBoard> {
         Position(column: 0, row: 2),
       ];
       generateFood();
+      generateObstacle();
       obstaclePositions = [];
     });
   }
 
   void move(Direction direction) {
     final newHead = snake.last.move(direction);
-
     // Check for collision with food
     if (newHead.row == foodPosition.row &&
         newHead.column == foodPosition.column) {
-      generateFood();
       setState(() {
+        score++;
         snake.add(newHead);
+        generateFood();
       });
       return;
     }
-
     // Check for collision with obstacles
     final collidedWithObstacle = obstaclePositions.any(
       (pos) => pos.row == newHead.row && pos.column == newHead.column,
@@ -95,7 +96,6 @@ class _GameBoardState extends State<GameBoard> {
       resetGame();
       return;
     }
-
     setState(() {
       snake.removeAt(0);
       snake.add(newHead);
@@ -200,7 +200,7 @@ class Obstacle extends StatelessWidget {
 class Position {
   int row;
   int column;
-  Direction? _direction;
+  final Direction? _direction;
 
   Position({
     required this.column,
