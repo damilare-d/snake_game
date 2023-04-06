@@ -31,6 +31,7 @@ class _GameBoardState extends State<GameBoard> {
   ];
   Direction _snakeDirection = Direction.right;
   int score = 0;
+  bool _hasEaten = false;
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _GameBoardState extends State<GameBoard> {
         Position(column: 0, row: 1),
         Position(column: 0, row: 2),
       ];
+      score = 0;
       generateFood();
       generateObstacle();
       obstaclePositions = [];
@@ -78,27 +80,50 @@ class _GameBoardState extends State<GameBoard> {
 
   void move(Direction direction) {
     final newHead = snake.last.move(direction);
+
     // Check for collision with food
     if (newHead.row == foodPosition.row &&
         newHead.column == foodPosition.column) {
       setState(() {
         score++;
+        _hasEaten = true;
         snake.add(newHead);
         generateFood();
       });
       return;
     }
+
     // Check for collision with obstacles
     final collidedWithObstacle = obstaclePositions.any(
       (pos) => pos.row == newHead.row && pos.column == newHead.column,
     );
     if (collidedWithObstacle) {
-      resetGame();
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Game Over'),
+          content: Text('Your score is $score'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                resetGame();
+              },
+              child: const Text('Restart'),
+            ),
+          ],
+        ),
+      );
       return;
     }
+
     setState(() {
-      snake.removeAt(0);
-      snake.add(newHead);
+      if (_hasEaten) {
+        snake.add(newHead);
+      } else {
+        snake.removeAt(0);
+        snake.add(newHead);
+      }
     });
   }
 
