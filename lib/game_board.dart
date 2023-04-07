@@ -32,6 +32,8 @@ class _GameBoardState extends State<GameBoard> {
   Direction _snakeDirection = Direction.right;
   int score = 0;
   bool _hasEaten = false;
+  bool isGameOver = false;
+  late final Timer _timer;
 
   @override
   void initState() {
@@ -59,9 +61,36 @@ class _GameBoardState extends State<GameBoard> {
 
   void timer() {
     const duration = Duration(milliseconds: 200);
-    Timer.periodic(duration, (Timer timer) {
-      move(_snakeDirection);
+    _timer = Timer.periodic(duration, (Timer timer) {
+      if (!isGameOver) {
+        move(_snakeDirection);
+      } else {
+        _timer.cancel();
+      }
     });
+  }
+
+  void gameOver() {
+    setState(() {
+      isGameOver = true;
+    });
+    _timer.cancel();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Game Over'),
+        content: Text('Your score is $score'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              resetGame();
+            },
+            child: const Text('Restart'),
+          ),
+        ],
+      ),
+    );
   }
 
   void resetGame() {
@@ -98,22 +127,7 @@ class _GameBoardState extends State<GameBoard> {
       (pos) => pos.row == newHead.row && pos.column == newHead.column,
     );
     if (collidedWithObstacle) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Game Over'),
-          content: Text('Your score is $score'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                resetGame();
-              },
-              child: const Text('Restart'),
-            ),
-          ],
-        ),
-      );
+      gameOver();
       return;
     }
 
